@@ -114,7 +114,6 @@ elif tool == 'Split PDF':
                                 except ValueError:
                                     invalid_tokens.append(tok)
                             else:
-                                # single page or split point
                                 try:
                                     p = int(tok)
                                     if 1 <= p <= total_pages:
@@ -129,14 +128,12 @@ elif tool == 'Split PDF':
                         if len(raw_tokens) == 1 and not '-' in raw_tokens[0]:
                             p = valid_pages[0] if valid_pages else None
                             if p:
-                                # split into two docs: 1–p and p+1–end
                                 writer1 = PdfWriter()
                                 for i in range(1, p+1):
                                     writer1.add_page(reader.pages[i-1])
                                 writer2 = PdfWriter()
                                 for i in range(p+1, total_pages+1):
                                     writer2.add_page(reader.pages[i-1])
-                                # bundle into a zip
                                 zip_buf = io.BytesIO()
                                 with zipfile.ZipFile(zip_buf, 'w') as z:
                                     out1 = io.BytesIO(); writer1.write(out1)
@@ -145,19 +142,14 @@ elif tool == 'Split PDF':
                                     z.writestr(f'split_{p+1}-{total_pages}.pdf', out2.getvalue())
                                 zip_buf.seek(0)
                                 show_success(f'Split into 2 files at page {p}.')
-                                st.download_button('Download Split ZIP', zip_buf, file_name='split_pages.zip')
-                                # warn if any invalid
+                                st.download_button(label='Download Split ZIP', data=zip_buf.getvalue(), file_name='split_pages.zip')
                                 if invalid_tokens:
                                     show_error(f'Invalid tokens ignored: {", ".join(invalid_tokens)}')
 
                         # Final extraction for explicit pages list
-                        if not valid_pages:
-                            show_error('No valid pages to extract after filtering invalid entries.')
-                        else:
-                            # warn about invalid tokens
+                        elif valid_pages:
                             if invalid_tokens:
                                 show_error(f'Ignored invalid entries: {", ".join(invalid_tokens)}')
-                            # extract valid_pages
                             writer = PdfWriter()
                             for n in valid_pages:
                                 writer.add_page(reader.pages[n-1])
@@ -165,5 +157,7 @@ elif tool == 'Split PDF':
                             writer.write(out)
                             show_success(f'Extracted {len(valid_pages)} page(s).')
                             download_button(out.getvalue(), 'split.pdf', 'Download Split PDF')
+                        else:
+                            show_error('No valid pages to extract after filtering invalid entries.')
                 except Exception as e:
                     show_error(f'Error during split: {str(e)}')
